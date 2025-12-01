@@ -10,59 +10,71 @@ import (
 
 var version = "development"
 
+type Options struct {
+	ConfigFile     string
+	DebugLogging   bool
+	JSONLogging    bool
+	ListenAddress  string
+	ValidateConfig bool
+	PrintVersion   bool
+}
+
+func parseFlags() Options {
+	var opts Options
+
+	flag.StringVar(&opts.ConfigFile, "config", "config.yaml", "config file")
+	flag.BoolVar(&opts.DebugLogging, "debug", false, "enable debug logging")
+	flag.BoolVar(&opts.PrintVersion, "version", false, "print version and exit")
+	flag.BoolVar(&opts.JSONLogging, "json", false, "output logging in JSON format")
+	flag.StringVar(&opts.ListenAddress, "address", ":8080", "listening address for api")
+	flag.BoolVar(&opts.ValidateConfig, "validate", false, "validate config and exit")
+
+	flag.Parse()
+	return opts
+}
+
+func setupLogger(opts Options) *slog.Logger {
+	level := slog.LevelInfo // default loglevel
+	if opts.DebugLogging {
+		level = slog.LevelDebug // debug logging enabled
+	}
+
+	handlerOpts := &slog.HandlerOptions{
+		Level: level,
+	}
+
+	var handler slog.Handler
+	if opts.JSONLogging {
+		handler = slog.NewJSONHandler(os.Stdout, handlerOpts)
+	} else {
+		handler = slog.NewTextHandler(os.Stdout, handlerOpts)
+	}
+	return slog.New(handler)
+}
+
 func main() {
 
-	// command-line args
-	var (
-		configFile     string
-		debugLogging   bool
-		jsonLogging    bool
-		listenAddress  string
-		validateConfig bool
-		printVersion   bool
-	)
-	flag.StringVar(&configFile, "config", "config.yaml", "config file")
-	flag.BoolVar(&debugLogging, "debug", false, "enable debug logging")
-	flag.BoolVar(&printVersion, "version", false, "print version and exit")
-	flag.BoolVar(&jsonLogging, "json", false, "output logging in JSON format")
-	flag.StringVar(&listenAddress, "address", ":8080", "listening address for api")
-	flag.BoolVar(&validateConfig, "validate", false, "validate config and exit")
-	flag.Parse()
+	opts := parseFlags()
 
 	// print version and exit
-	if printVersion {
+	if opts.PrintVersion {
 		fmt.Println("version:", version)
 		os.Exit(0)
 	}
 
-	// setup logging options
-	loggingLevel := slog.LevelInfo // default loglevel
-	if debugLogging {
-		loggingLevel = slog.LevelDebug // debug logging enabled
-	}
-	opts := &slog.HandlerOptions{
-		Level: loggingLevel,
-	}
-
-	// create json or text logger based on args
-	var logger *slog.Logger
-	if jsonLogging {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, opts))
-	} else {
-		logger = slog.New(slog.NewTextHandler(os.Stdout, opts))
-	}
+	logger := setupLogger(opts)
 	slog.SetDefault(logger)
 
 	// load configuration
-	slog.Debug("reading config", "configFile", configFile)
+	slog.Debug("reading config", "configFile", opts.ConfigFile)
 	var config Config
-	if !config.LoadConfig(configFile) {
+	if !config.LoadConfig(opts.ConfigFile) {
 		os.Exit(1) // fail if config is not valid
 	}
 	slog.Debug("loaded config")
 
 	// print a message and exit if validate arg was specified
-	if validateConfig {
+	if opts.ValidateConfig {
 		slog.Info("configuration was validated successfully")
 		os.Exit(0)
 	}
@@ -113,8 +125,8 @@ func main() {
 	http.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {})
 
 	// start the webserver
-	slog.Info("Starting web server", "address", listenAddress)
-	if err := http.ListenAndServe(listenAddress, nil); err != nil {
+	slog.Info("Starting web server", "address", opts.ListenAddress)
+	if err := http.ListenAndServe(opts.ListenAddress, nil); err != nil {
 		slog.Error("Error starting web server", "error", err)
 	}
 
