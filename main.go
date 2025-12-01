@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/yungwood/ical-filter-proxy/internal/calendar"
+	"github.com/yungwood/ical-filter-proxy/internal/config"
 	"log/slog"
 	"net/http"
 	"os"
@@ -52,7 +54,7 @@ func setupLogger(opts Options) *slog.Logger {
 	return slog.New(handler)
 }
 
-func makeCalendarHandler(cal CalendarConfig) http.HandlerFunc {
+func makeCalendarHandler(cal calendar.CalendarConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		slog.Debug("Received request for calendar", "http_path", r.URL.Path, "calendar", cal.Name, "client_ip", r.RemoteAddr)
@@ -66,7 +68,7 @@ func makeCalendarHandler(cal CalendarConfig) http.HandlerFunc {
 		}
 
 		// fetch and filter upstream calendar
-		feed, err := cal.fetch()
+		feed, err := cal.Fetch()
 		if err != nil {
 			slog.Error("Error fetching and filtering feed", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -101,7 +103,7 @@ func main() {
 
 	// load configuration
 	slog.Debug("reading config", "configFile", opts.ConfigFile)
-	var config Config
+	var config config.Config
 	if !config.LoadConfig(opts.ConfigFile) {
 		os.Exit(1) // fail if config is not valid
 	}

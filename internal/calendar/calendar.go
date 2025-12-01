@@ -1,4 +1,4 @@
-package main
+package calendar
 
 import (
 	"bytes"
@@ -27,7 +27,7 @@ type CalendarConfig struct {
 }
 
 // Downloads iCal feed from the URL and applies filtering rules
-func (calendarConfig CalendarConfig) fetch() ([]byte, error) {
+func (calendarConfig CalendarConfig) Fetch() ([]byte, error) {
 
 	// get the iCal feed
 	slog.Debug("Fetching iCal feed", "url", calendarConfig.FeedURL)
@@ -242,7 +242,6 @@ func (filter Filter) transformEvent(event *ics.VEvent) {
 	if filter.Transform.Description.Suffix != "" {
 		event.SetDescription(eventDescriptionValue + filter.Transform.Description.Suffix)
 	}
-
 
 	// Location transformations
 	if filter.Transform.Location.Remove {

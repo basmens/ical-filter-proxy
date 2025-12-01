@@ -1,16 +1,17 @@
-package main
+package config
 
 import (
 	"log/slog"
 	"os"
 	"strings"
 
+	"github.com/yungwood/ical-filter-proxy/internal/calendar"
 	"gopkg.in/yaml.v3"
 )
 
 // this struct used to parse config.yaml
 type Config struct {
-	Calendars []CalendarConfig `yaml:"calendars"`
+	Calendars []calendar.CalendarConfig `yaml:"calendars"`
 }
 
 // This function loads the configuration file and does some basic validation
