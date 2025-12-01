@@ -83,23 +83,25 @@ func main() {
 	// todo: consider refactor to route requests dynamically?
 	for _, calendarConfig := range config.Calendars {
 
+		cal := calendarConfig // copy to new var
+
 		// configure HTTP endpoint
-		httpPath := "/calendars/" + calendarConfig.Name + "/feed"
-		slog.Debug("Configuring endpoint", "calendar", calendarConfig.Name, "http_path", httpPath)
+		httpPath := "/calendars/" + cal.Name + "/feed"
+		slog.Debug("Configuring endpoint", "calendar", cal.Name, "http_path", httpPath)
 		http.HandleFunc(httpPath, func(w http.ResponseWriter, r *http.Request) {
 
-			slog.Debug("Received request for calendar", "http_path", httpPath, "calendar", calendarConfig.Name, "client_ip", r.RemoteAddr)
+			slog.Debug("Received request for calendar", "http_path", httpPath, "calendar", cal.Name, "client_ip", r.RemoteAddr)
 
 			// validate token
 			token := r.URL.Query().Get("token")
-			if token != calendarConfig.Token {
+			if token != cal.Token {
 				slog.Warn("Unauthorized access attempt", "client_ip", r.RemoteAddr)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
 			// fetch and filter upstream calendar
-			feed, err := calendarConfig.fetch()
+			feed, err := cal.fetch()
 			if err != nil {
 				slog.Error("Error fetching and filtering feed", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -115,7 +117,7 @@ func main() {
 				return
 			}
 
-			slog.Info("Calendar request processed", "http_path", httpPath, "calendar", calendarConfig.Name, "client_ip", r.RemoteAddr)
+			slog.Info("Calendar request processed", "http_path", httpPath, "calendar", cal.Name, "client_ip", r.RemoteAddr)
 		})
 
 	}
