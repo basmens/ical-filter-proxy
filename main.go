@@ -52,6 +52,40 @@ func setupLogger(opts Options) *slog.Logger {
 	return slog.New(handler)
 }
 
+func makeCalendarHandler(cal CalendarConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		slog.Debug("Received request for calendar", "http_path", r.URL.Path, "calendar", cal.Name, "client_ip", r.RemoteAddr)
+
+		// validate token
+		token := r.URL.Query().Get("token")
+		if token != cal.Token {
+			slog.Warn("Unauthorized access attempt", "client_ip", r.RemoteAddr)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// fetch and filter upstream calendar
+		feed, err := cal.fetch()
+		if err != nil {
+			slog.Error("Error fetching and filtering feed", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// return calendar
+		w.Header().Set("Content-Type", "text/calendar")
+		_, err = w.Write(feed)
+		if err != nil {
+			slog.Error("Error writing response", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		slog.Info("Calendar request processed", "http_path", r.URL.Path, "calendar", cal.Name, "client_ip", r.RemoteAddr)
+	}
+}
+
 func main() {
 
 	opts := parseFlags()
@@ -79,6 +113,8 @@ func main() {
 		os.Exit(0)
 	}
 
+	mux := http.NewServeMux()
+
 	// iterate through calendars in the config and setup a handler for each
 	// todo: consider refactor to route requests dynamically?
 	for _, calendarConfig := range config.Calendars {
@@ -88,47 +124,16 @@ func main() {
 		// configure HTTP endpoint
 		httpPath := "/calendars/" + cal.Name + "/feed"
 		slog.Debug("Configuring endpoint", "calendar", cal.Name, "http_path", httpPath)
-		http.HandleFunc(httpPath, func(w http.ResponseWriter, r *http.Request) {
-
-			slog.Debug("Received request for calendar", "http_path", httpPath, "calendar", cal.Name, "client_ip", r.RemoteAddr)
-
-			// validate token
-			token := r.URL.Query().Get("token")
-			if token != cal.Token {
-				slog.Warn("Unauthorized access attempt", "client_ip", r.RemoteAddr)
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			// fetch and filter upstream calendar
-			feed, err := cal.fetch()
-			if err != nil {
-				slog.Error("Error fetching and filtering feed", "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			// return calendar
-			w.Header().Set("Content-Type", "text/calendar")
-			_, err = w.Write(feed)
-			if err != nil {
-				slog.Error("Error writing response", "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			slog.Info("Calendar request processed", "http_path", httpPath, "calendar", cal.Name, "client_ip", r.RemoteAddr)
-		})
-
+		mux.HandleFunc(httpPath, makeCalendarHandler(cal))
 	}
 
 	// add a readiness and liveness check endpoint (return blank 200 OK response)
-	http.HandleFunc("/liveness", func(w http.ResponseWriter, r *http.Request) {})
-	http.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/liveness", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {})
 
 	// start the webserver
 	slog.Info("Starting web server", "address", opts.ListenAddress)
-	if err := http.ListenAndServe(opts.ListenAddress, nil); err != nil {
+	if err := http.ListenAndServe(opts.ListenAddress, mux); err != nil {
 		slog.Error("Error starting web server", "error", err)
 	}
 
