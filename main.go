@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -105,7 +104,7 @@ func main() {
 		configFile     string
 		debugLogging   bool
 		jsonLogging    bool
-		listenPort     int
+		listenAddress  string
 		validateConfig bool
 		printVersion   bool
 	)
@@ -113,7 +112,7 @@ func main() {
 	flag.BoolVar(&debugLogging, "debug", false, "enable debug logging")
 	flag.BoolVar(&printVersion, "version", false, "print version and exit")
 	flag.BoolVar(&jsonLogging, "json", false, "output logging in JSON format")
-	flag.IntVar(&listenPort, "port", 8080, "listening port for api")
+	flag.StringVar(&listenAddress, "address", ":8080", "listening address for api")
 	flag.BoolVar(&validateConfig, "validate", false, "validate config and exit")
 	flag.Parse()
 
@@ -201,8 +200,8 @@ func main() {
 	http.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {})
 
 	// start the webserver
-	slog.Info("Starting web server", "port", listenPort)
-	if err := http.ListenAndServe(":"+strconv.Itoa(listenPort), nil); err != nil {
+	slog.Info("Starting web server", "address", listenAddress)
+	if err := http.ListenAndServe(listenAddress, nil); err != nil {
 		slog.Error("Error starting web server", "error", err)
 	}
 
