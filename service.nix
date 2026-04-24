@@ -278,6 +278,11 @@ in {
                               default = null;
                               description = "Match conditions for event URL.";
                             };
+                            all_day = mkOption {
+                              type = types.nullOr types.bool;
+                              default = null;
+                              description = "Match based on whether an event is all-day (true) or timed (false).";
+                            };
                           };
                         });
                         default = null;

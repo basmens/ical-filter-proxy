@@ -13,6 +13,8 @@ import (
 	ics "github.com/arran4/golang-ical"
 )
 
+var allDayDateValue = regexp.MustCompile(`^[0-9]{8}$`)
+
 // All structs defined in this file are used to unmarshall yaml configuration and
 // provide helper functions that are used to fetch and filter events
 
@@ -184,6 +186,15 @@ func (filter Filter) matchesEvent(event ics.VEvent) bool {
 		return false // never match if VEvent has no summary
 	}
 
+	// Check all-day filter condition against DTSTART.
+	if filter.Match.AllDay != nil {
+		eventIsAllDay := isAllDayEvent(event)
+		if eventIsAllDay != *filter.Match.AllDay {
+			slog.Debug("Event all_day does not match filter condition", "event_summary", eventSummary.Value, "filter", filter.Description, "event_all_day", eventIsAllDay)
+			return false
+		}
+	}
+
 	// Check Summary filters against VEvent
 	if filter.Match.Summary.hasConditions() {
 		if !filter.Match.Summary.matchesString(eventSummary.Value) {
@@ -319,6 +330,25 @@ type EventMatchRules struct {
 	Description StringMatchRule `yaml:"description"`
 	Location    StringMatchRule `yaml:"location"`
 	Url         StringMatchRule `yaml:"url"`
+	AllDay      *bool           `yaml:"all_day"`
+}
+
+// Returns true if DTSTART indicates an all-day event.
+func isAllDayEvent(event ics.VEvent) bool {
+	start := event.GetProperty(ics.ComponentPropertyDtStart)
+	if start == nil {
+		return false
+	}
+
+	if values, ok := start.ICalParameters["VALUE"]; ok {
+		for _, value := range values {
+			if strings.EqualFold(value, "DATE") {
+				return true
+			}
+		}
+	}
+
+	return allDayDateValue.MatchString(strings.TrimSpace(start.Value))
 }
 
 // StringMatchRule defines match rules for VEvent properties with string values

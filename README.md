@@ -213,6 +213,7 @@ Each filter can specify match conditions against the following event properties:
 - `location` (string value)
 - `description` (string value)
 - `url` (string value)
+- `all_day` (boolean value)
 
 These match conditions are available for a string value:
 
@@ -221,6 +222,10 @@ These match conditions are available for a string value:
 - `prefix` - property must start with this value
 - `suffix` - property must end with this value
 - `regex` - property must match the given regular expression (an invalid regex will result in no matches)
+
+Boolean match conditions:
+
+- `all_day` - set to `true` to match all-day events, set to `false` to match timed events
 
 #### Transformations
 
