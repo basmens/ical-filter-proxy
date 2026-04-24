@@ -358,6 +358,58 @@ in {
                               default = null;
                               description = "Transformations for event URL.";
                             };
+                            organizer = mkOption {
+                              type = types.nullOr (types.submodule {
+                                options = {
+                                  remove = mkOption {
+                                    type = types.nullOr types.bool;
+                                    default = null;
+                                    description = "Remove ORGANIZER properties from matching events.";
+                                  };
+                                };
+                              });
+                              default = null;
+                              description = "Transformations for event organizer metadata.";
+                            };
+                            organizers = mkOption {
+                              type = types.nullOr (types.submodule {
+                                options = {
+                                  remove = mkOption {
+                                    type = types.nullOr types.bool;
+                                    default = null;
+                                    description = "Alias for organizer removal transform.";
+                                  };
+                                };
+                              });
+                              default = null;
+                              description = "Alias transformations for event organizer metadata.";
+                            };
+                            attendee = mkOption {
+                              type = types.nullOr (types.submodule {
+                                options = {
+                                  remove = mkOption {
+                                    type = types.nullOr types.bool;
+                                    default = null;
+                                    description = "Remove ATTENDEE properties from matching events.";
+                                  };
+                                };
+                              });
+                              default = null;
+                              description = "Transformations for event attendee metadata.";
+                            };
+                            attendees = mkOption {
+                              type = types.nullOr (types.submodule {
+                                options = {
+                                  remove = mkOption {
+                                    type = types.nullOr types.bool;
+                                    default = null;
+                                    description = "Alias for attendee removal transform.";
+                                  };
+                                };
+                              });
+                              default = null;
+                              description = "Alias transformations for event attendee metadata.";
+                            };
                           };
                         });
                         default = null;

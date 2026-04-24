@@ -301,6 +301,16 @@ func (filter Filter) transformEvent(event *ics.VEvent) {
 	} else if filter.Transform.Url.Replace != "" {
 		event.SetURL(filter.Transform.Url.Replace)
 	}
+
+	// Remove organizer metadata if requested.
+	if filter.Transform.Organizer.Remove || filter.Transform.Organizers.Remove {
+		event.RemoveProperty(ics.ComponentPropertyOrganizer)
+	}
+
+	// Remove attendee metadata if requested.
+	if filter.Transform.Attendee.Remove || filter.Transform.Attendees.Remove {
+		event.RemoveProperty(ics.ComponentPropertyAttendee)
+	}
 }
 
 // EventMatchRules contains VEvent properties that user can match against
@@ -374,6 +384,10 @@ type EventTransformRules struct {
 	Description StringTransformRule `yaml:"description"`
 	Location    StringTransformRule `yaml:"location"`
 	Url         StringTransformRule `yaml:"url"`
+	Organizer   RemoveTransformRule `yaml:"organizer"`
+	Organizers  RemoveTransformRule `yaml:"organizers"`
+	Attendee    RemoveTransformRule `yaml:"attendee"`
+	Attendees   RemoveTransformRule `yaml:"attendees"`
 }
 
 // StringTransformRule defines changes for VEvent properties with string values
@@ -382,4 +396,9 @@ type StringTransformRule struct {
 	Remove  bool   `yaml:"remove"`
 	Prefix  string `yaml:"prefix"`
 	Suffix  string `yaml:"suffix"`
+}
+
+// RemoveTransformRule defines removal-only transforms for non-string event properties.
+type RemoveTransformRule struct {
+	Remove bool `yaml:"remove"`
 }

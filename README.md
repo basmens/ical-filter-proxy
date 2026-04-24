@@ -138,6 +138,10 @@ calendars:
         transform: # optional
           description: # modify event description
             remove: true # replace with a blank string
+          organizer: # remove ORGANIZER metadata
+            remove: true
+          attendees: # remove all ATTENDEE entries
+            remove: true
 
   # example: removing noise from an Office 365 calendar
   - name: outlook
@@ -226,11 +230,15 @@ Transformations can be applied to the following event properties:
 - `location` - string value
 - `description` - string value
 - `url` - string value
+- `organizer` / `organizers` - organizer metadata
+- `attendee` / `attendees` - attendee metadata
 
 The following transformations are available for strings:
 
 - `replace` - the property is replace with this value
 - `remove` - if `true` the property is set to a blank string
+
+For `organizer(s)` and `attendee(s)`, only `remove` is supported. When enabled, matching events have all `ORGANIZER` or `ATTENDEE` properties removed.
 
 ### Secrets
 
