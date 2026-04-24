@@ -32,7 +32,19 @@ in {
     port = mkOption {
       type = types.port;
       default = 8080;
-      description = "Port on which the service listens.";
+      description = "Port on which the service listens (written to generated config and used for firewall rules).";
+    };
+
+    tlsCertFile = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = "Path to TLS certificate file (PEM) written to generated config as tls_cert_file.";
+    };
+
+    tlsKeyFile = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = "Path to TLS private key file (PEM) written to generated config as tls_key_file.";
     };
 
     configFile = mkOption {
@@ -44,6 +56,24 @@ in {
     config = mkOption {
       type = types.nullOr (types.submodule {
         options = {
+          port = mkOption {
+            type = types.nullOr types.port;
+            default = null;
+            description = "Port on which the service listens.";
+          };
+
+          tls_cert_file = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = "Path to TLS certificate file (PEM).";
+          };
+
+          tls_key_file = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = "Path to TLS private key file (PEM).";
+          };
+
           calendars = mkOption {
             type = types.listOf (types.submodule {
               options = {
@@ -393,6 +423,10 @@ in {
         assertion = (cfg.configFile != null) != (cfg.config != null);
         message = "Either configFile or config must be specified, but not both.";
       }
+      {
+        assertion = (cfg.tlsCertFile == null) == (cfg.tlsKeyFile == null);
+        message = "tlsCertFile and tlsKeyFile must both be set, or both be null.";
+      }
     ];
 
     users.users.${cfg.user} = {
@@ -404,10 +438,22 @@ in {
     users.groups.${cfg.group} = {};
 
     systemd.services.ical-filter-proxy = let
+      generatedConfig =
+        cfg.config
+        // {
+          port = cfg.port;
+        }
+        // optionalAttrs (cfg.tlsCertFile != null) {
+          tls_cert_file = cfg.tlsCertFile;
+        }
+        // optionalAttrs (cfg.tlsKeyFile != null) {
+          tls_key_file = cfg.tlsKeyFile;
+        };
+
       configFile =
         if cfg.configFile != null
         then cfg.configFile
-        else pkgs.writeText "ical-filter-proxy-config.yaml" (pkgs.lib.generators.toYAML {} cfg.config);
+        else pkgs.writeText "ical-filter-proxy-config.yaml" (pkgs.lib.generators.toYAML {} generatedConfig);
     in {
       description = "iCal Filter Proxy";
       after = ["network.target"];
@@ -446,8 +492,6 @@ in {
               "${cfg.package}/bin/ical-filter-proxy"
               "-config"
               "${configFile}"
-              "-port"
-              "${toString cfg.port}"
             ]
             ++ optional cfg.debug "-debug"
             ++ optional cfg.jsonLogging "-json"

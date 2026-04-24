@@ -16,6 +16,9 @@ var version = "development"
 
 // this struct used to parse config.yaml
 type Config struct {
+	Port        int              `yaml:"port"`
+	TLSCertFile string           `yaml:"tls_cert_file"`
+	TLSKeyFile  string           `yaml:"tls_key_file"`
 	Calendars []CalendarConfig `yaml:"calendars"`
 }
 
@@ -30,6 +33,16 @@ func (config *Config) LoadConfig(file string) bool {
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		slog.Error("Error while unmarshalling yaml! Check config file is valid", "file", file)
+		return false
+	}
+
+	if config.Port == 0 {
+		slog.Info("Port is not set. Using default port 8080")
+		config.Port = 8080
+	}
+
+	if (config.TLSCertFile == "") != (config.TLSKeyFile == "") {
+		slog.Error("Both tls_cert_file and tls_key_file must be set to enable HTTPS")
 		return false
 	}
 
@@ -134,7 +147,6 @@ func main() {
 		configFile     string
 		debugLogging   bool
 		jsonLogging    bool
-		listenPort     int
 		validateConfig bool
 		printVersion   bool
 	)
@@ -142,7 +154,6 @@ func main() {
 	flag.BoolVar(&debugLogging, "debug", false, "enable debug logging")
 	flag.BoolVar(&printVersion, "version", false, "print version and exit")
 	flag.BoolVar(&jsonLogging, "json", false, "output logging in JSON format")
-	flag.IntVar(&listenPort, "port", 8080, "listening port for api")
 	flag.BoolVar(&validateConfig, "validate", false, "validate config and exit")
 	flag.Parse()
 
@@ -230,9 +241,18 @@ func main() {
 	http.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {})
 
 	// start the webserver
-	slog.Info("Starting web server", "port", listenPort)
-	if err := http.ListenAndServe(":"+strconv.Itoa(listenPort), nil); err != nil {
-		slog.Error("Error starting web server", "error", err)
+	listenAddr := ":" + strconv.Itoa(config.Port)
+	if config.TLSCertFile != "" {
+		slog.Info("Starting HTTPS web server", "port", config.Port, "tls_cert", config.TLSCertFile, "tls_key", config.TLSKeyFile)
+		if err := http.ListenAndServeTLS(listenAddr, config.TLSCertFile, config.TLSKeyFile, nil); err != nil {
+			slog.Error("Error starting HTTPS web server", "error", err)
+		}
+		return
+	}
+
+	slog.Info("Starting HTTP web server", "port", config.Port)
+	if err := http.ListenAndServe(listenAddr, nil); err != nil {
+		slog.Error("Error starting HTTP web server", "error", err)
 	}
 
 }

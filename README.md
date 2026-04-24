@@ -51,6 +51,18 @@ docker run -d \
 
 You can also adapt the included [`docker-compose.yaml`](./docker-compose.yaml) example.
 
+To enable HTTPS directly in the app, mount a certificate and key into the container and set `tls_cert_file` and `tls_key_file` in your config file:
+
+```bash
+docker run -d \
+  --name=ical-filter-proxy \
+  -v config.yaml:/app/config.yaml \
+  -v certs:/app/certs \
+  -p 8443:8080/tcp \
+  --restart unless-stopped \
+  yungwood/ical-filter-proxy:latest
+```
+
 ### Kubernetes
 
 You can deploy iCal Filter Proxy using the helm chart from [`yungwood/helm-charts/ical-filter-proxy`](https://github.com/yungwood/helm-charts/blob/main/charts/ical-filter-proxy).
@@ -101,6 +113,10 @@ Calendars and filters are defined in a yaml config file. By default this is `con
 Example configuration (with comments):
 
 ```yaml
+port: 8080 # optional - defaults to 8080
+tls_cert_file: "/app/certs/tls.crt" # optional - enable HTTPS when both cert and key are set
+tls_key_file: "/app/certs/tls.key" # optional - enable HTTPS when both cert and key are set
+
 calendars:
   # basic example
   - name: example # used as slug in URL - e.g. ical-filter-proxy:8080/calendars/example/feed?token=changeme
@@ -165,6 +181,8 @@ calendars:
 
 The service exposes a simple HTTP API for accessing the proxied calendars.
 The base URL is `http://<host>:<port>/calendars/<calendar_name>/feed`.
+
+If `tls_cert_file` and `tls_key_file` are set in the config, the service listens with HTTPS instead and the base URL becomes `https://<host>:<port>/calendars/<calendar_name>/feed`.
 
 
 ### Filters
