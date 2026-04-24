@@ -19,7 +19,7 @@ type Config struct {
 	Port        int              `yaml:"port"`
 	TLSCertFile string           `yaml:"tls_cert_file"`
 	TLSKeyFile  string           `yaml:"tls_key_file"`
-	Calendars []CalendarConfig `yaml:"calendars"`
+	Calendars   []CalendarConfig `yaml:"calendars"`
 }
 
 // This function loads the configuration file and does some basic validation
@@ -97,9 +97,9 @@ func (config *Config) LoadConfig(file string) bool {
 		}
 		calendarConfig.FeedURLs = validFeedURLs
 
-		// Check if any urls are defined
-		if len(calendarConfig.FeedURLs) == 0 {
-			slog.Warn("Calendar has no valid upstream feed URLs defined", "calendar", calendarConfig.Name)
+		// Check if any upstream feeds are defined
+		if len(calendarConfig.FeedFiles) == 0 && len(calendarConfig.FeedURLs) == 0 {
+			slog.Warn("Calendar has no upstream feeds defined", "calendar", calendarConfig.Name)
 		}
 
 		// check if token should be loaded from file

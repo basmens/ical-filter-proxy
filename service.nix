@@ -111,6 +111,11 @@ in {
                   default = null;
                   description = "Path to file containing the feed URL (legacy singular option).";
                 };
+                feed_files = mkOption {
+                  type = types.listOf types.path;
+                  default = [];
+                  description = "List of local iCal files to load before URL-based feeds.";
+                };
                 feed_urls = mkOption {
                   type = types.listOf types.str;
                   default = [];
@@ -375,6 +380,9 @@ in {
           {
             name = "example";
             token = "secure-token";
+            feed_files = [
+              "/var/lib/ical-filter-proxy/local.ics"
+            ];
             feed_urls = [
               "https://calendar.example.com/feed.ics"
               "https://calendar2.example.com/feed.ics"

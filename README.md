@@ -123,6 +123,8 @@ calendars:
     publish_name: "My Calendar" # the published name of the calendar - uses upstream value if this line is skipped
     token: "changeme" # optional - token must be used to pull iCal feed if defined
     public: false # optional - must be true if token is blank or not defined
+    feed_files: # optional - local iCal files loaded before URL-based feeds
+      - "/data/calendar-local.ics"
     feed_urls: # one or more upstream iCal feeds to merge
       - "https://my-upstream-calendar.url/feed.ics"
       - "https://my-other-calendar.url/feed.ics"
@@ -189,7 +191,7 @@ If `tls_cert_file` and `tls_key_file` are set in the config, the service listens
 
 Calendar events are filtered using a similar concept to email filtering. A list of filters is defined for each calendar in the config.
 
-Each event parsed from `feed_urls` is evaluated against the filters in sequence.
+Each event parsed from `feed_files` and `feed_urls` is evaluated against the filters in sequence.
 
 - All `match` rules for a filter must be true to match an event
 - A filter with no `match` rules will _always_ match

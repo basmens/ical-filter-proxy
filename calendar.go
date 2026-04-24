@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
@@ -22,6 +23,7 @@ type CalendarConfig struct {
 	Public       bool     `yaml:"public"`
 	Token        string   `yaml:"token"`
 	TokenFile    string   `yaml:"token_file"`
+	FeedFiles    []string `yaml:"feed_files"`
 	FeedURL      string   `yaml:"feed_url"`
 	FeedURLFile  string   `yaml:"feed_url_file"`
 	FeedURLs     []string `yaml:"feed_urls"`
@@ -32,9 +34,21 @@ type CalendarConfig struct {
 // Downloads iCal feed from the URL and applies filtering rules
 func (calendarConfig CalendarConfig) fetch() ([]byte, error) {
 	var cal *ics.Calendar
+	feedIndex := 0
+
+	mergeCalendar := func(upstreamCal *ics.Calendar) {
+		if feedIndex == 0 {
+			cal = upstreamCal
+		} else {
+			for _, event := range upstreamCal.Events() {
+				cal.AddVEvent(event)
+			}
+		}
+		feedIndex++
+	}
 
 	// Load upstream feeds, use calendar settings of first feed as base if multiple feeds are defined (it was easiest)
-	for i, feedURL := range calendarConfig.FeedURLs {
+	for _, feedURL := range calendarConfig.FeedURLs {
 		slog.Debug("Fetching iCal feed", "url", feedURL)
 		resp, err := http.Get(feedURL)
 		if err != nil {
@@ -56,13 +70,23 @@ func (calendarConfig CalendarConfig) fetch() ([]byte, error) {
 			return nil, err
 		}
 
-		if i == 0 {
-			cal = upstreamCal
-			continue
+		mergeCalendar(upstreamCal)
+	}
+
+	// Load local feed files first so their calendar metadata becomes the base when combined with URL feeds.
+	for _, feedFile := range calendarConfig.FeedFiles {
+		slog.Debug("Loading local iCal feed", "file", feedFile)
+		feedData, err := os.ReadFile(feedFile)
+		if err != nil {
+			return nil, err
 		}
-		for _, event := range upstreamCal.Events() {
-			cal.AddVEvent(event)
+
+		upstreamCal, err := ics.ParseCalendar(strings.NewReader(string(feedData)))
+		if err != nil {
+			return nil, err
 		}
+
+		mergeCalendar(upstreamCal)
 	}
 
 	if cal == nil {
